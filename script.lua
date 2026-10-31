@@ -263,10 +263,10 @@ ToggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==================== LOGIKA CLICK DELETE ====================
+-- ==================== LOGIKA CLICK DELETE (SUPPORT HP & PC) ====================
 local isClickDeleteActive = false
-local currentSelectionBox = nil
 local hoveredPart = nil
+local Camera = workspace.CurrentCamera
 
 -- Membuat SelectionBox untuk efek garis pinggiran merah
 local selectionBox = Instance.new("SelectionBox")
@@ -286,30 +286,39 @@ DeleteContainer.MouseButton1Click:Connect(function()
     end
 end)
 
--- Deteksi objek yang di-hover dan di-klik secara lokal
+-- Deteksi objek menggunakan Raycast (Berfungsi di HP & PC)
 RunService.RenderStepped:Connect(function()
     if not isClickDeleteActive then
         selectionBox.Adornee = nil
         return
     end
 
-    local mouse = LocalPlayer:GetMouse()
-    local target = mouse.Target
+    -- Mendapatkan posisi kursor (PC) atau posisi jari/tengah layar (HP)
+    local mouseLocation = UserInputService:GetMouseLocation()
+    local unitRay = Camera:ViewportPointToRay(mouseLocation.X, mouseLocation.Y)
+    
+    -- Raycast untuk mendeteksi objek di depan kamera
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    
+    local raycastResult = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, raycastParams)
 
-    if target and target:IsA("BasePart") then
-        hoveredPart = target
+    if raycastResult and raycastResult.Instance and raycastResult.Instance:IsA("BasePart") then
+        hoveredPart = raycastResult.Instance
         selectionBox.Adornee = hoveredPart
     else
-        hoveredPart = nil
-        selectionBox.Adornee = nil
+    	hoveredPart = nil
+    	selectionBox.Adornee = nil
     end
 end)
 
--- Eksekusi penghapusan lokal saat objek diklik
+-- Eksekusi penghapusan lokal saat layar disentuh (HP) atau diklik (PC)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not isClickDeleteActive then return end
     
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and not gameProcessed then
+    -- Mendukung klik kiri mouse (PC) maupun sentuhan layar (HP)
+    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not gameProcessed then
         if hoveredPart then
             hoveredPart:Destroy() -- Menghapus objek secara lokal (hanya di layar kita)
             selectionBox.Adornee = nil
